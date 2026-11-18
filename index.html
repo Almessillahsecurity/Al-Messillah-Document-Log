@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
-<title>Guardhouse Document Log</title>
+<title>Al Messillah Document Log</title>
 <style>
 :root{--bg:#f3f1ec;--card:#fff;--tx:#1d2125;--mu:#5c6670;--ln:#d8d4ca;--sign:#1b4f8f;--signtx:#fff;--pen:#b45f06;--pent:#fdf0dc;--ok:#1a7f37;--okt:#e3f4e8;--bad:#b3261e;--ac:#1b4f8f;--act:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#14181b;--card:#1e2327;--tx:#ecebe6;--mu:#9aa5ad;--ln:#323a40;--sign:#3b7dd8;--pen:#f0a24a;--pent:#33271a;--ok:#5fd085;--okt:#17301f;--bad:#ff8a80;--ac:#3b7dd8}}
@@ -78,10 +78,10 @@ function card(d,hist){
 function render(){
  var a=document.getElementById("app");
  if(!loaded){
-  if(pin&&!failed){a.innerHTML='<h1 style="padding-top:40px">Guardhouse Document Log</h1><div class="empty">Loading…</div>';return}
-  if(pin&&failed){a.innerHTML='<h1 style="padding-top:40px">Guardhouse Document Log</h1><div class="empty">Could not connect.</div><button class="btn" data-a="retry">Try again</button>';return}
-  a.innerHTML='<h1 style="padding-top:40px">Guardhouse Document Log</h1><label>Enter the PIN to open</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><button class="btn" data-a="unlock">Open</button>';return}
- var h='<header><h1>Guardhouse Document Log</h1><div class="who">I am<select id="me"><option value="">Pick your name</option>'+opts(G,me)+'</select><button data-a="refresh" aria-label="Refresh">↻</button></div><nav>';
+  if(pin&&!failed){a.innerHTML='<h1 style="padding-top:40px">Al Messillah Document Log</h1><div class="empty">Loading…</div>';return}
+  if(pin&&failed){a.innerHTML='<h1 style="padding-top:40px">Al Messillah Document Log</h1><div class="empty">Could not connect.</div><button class="btn" data-a="retry">Try again</button>';return}
+  a.innerHTML='<h1 style="padding-top:40px">Al Messillah Document Log</h1><label>Enter the PIN to open</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><button class="btn" data-a="unlock">Open</button>';return}
+ var h='<header><h1>Al Messillah Document Log</h1><div class="who">I am<select id="me"><option value="">Pick your name</option>'+opts(G,me)+'</select><button data-a="refresh" aria-label="Refresh">↻</button></div><nav>';
  [["wait","Waiting"],["add","Add"],["hist","Records"]].forEach(function(t){h+='<button data-a="tab" data-id="'+t[0]+'" class="'+(tab===t[0]?"on":"")+'">'+t[1]+"</button>"});
  h+="</nav></header>";
  if(!G.length)h+='<div class="empty">No guard names yet. Open Records and add the guard names first.</div>';
