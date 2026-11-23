@@ -65,9 +65,12 @@ function call(action,extra,quiet){
  }).catch(function(){busy=false;failed=true;toast("No connection. Nothing was saved.");return false})}
 function act(action,extra,msg){if(busy)return;call(action,extra).then(function(ok){render();if(ok)toast(msg)})}
 function find(id){return D.filter(function(d){return d.id===id})[0]}
+function pd(s){var m=/(\d\d)\/(\d\d)\/(\d{4}) (\d\d):(\d\d)/.exec(s||"");return m?new Date(+m[3],m[2]-1,+m[1],+m[4],+m[5]).getTime():0}
+function ts(d){var l=d.log.length?d.log[d.log.length-1]:"";return Math.max(pd(d.updatedAt),pd(d.doneAt),pd(d.receivedAt),pd(l))}
+function qx(d){var n=parseInt(d.qty)||1;return n>1?" × "+n:""}
 function card(d,hist){
- var c=d.status==="Pending"?"":d.status==="Voided"?" void":" done",h='<div class="card'+c+'"><div class="top"><span class="villa">'+esc(d.street)+" "+esc(d.villa)+'</span><span class="tag">'+(hist?esc(d.status):esc(d.type))+'</span></div>';
- h+='<div>'+esc(d.tenant)+(hist?" · "+esc(d.type):"")+'</div><div class="mu">Given by '+esc(d.givenBy)+" to "+esc(d.receivedBy)+", "+esc(d.receivedAt)+"</div>";
+ var c=d.status==="Pending"?"":d.status==="Voided"?" void":" done",h='<div class="card'+c+'"><div class="top"><span class="villa">'+esc(d.street)+" "+esc(d.villa)+'</span><span class="tag">'+(hist?esc(d.status):esc(d.type)+qx(d))+'</span></div>';
+ h+='<div>'+esc(d.tenant)+(hist?" · "+esc(d.type)+qx(d):"")+'</div><div class="mu">Given by '+esc(d.givenBy)+" to "+esc(d.receivedBy)+", "+esc(d.receivedAt)+"</div>"+(d.note?'<div class="mu">'+esc(d.note)+"</div>":"");
  if(d.doneAt)h+='<div class="mu">'+esc(d.status)+": "+esc(d.collectedBy)+(d.handedBy?", handed by "+esc(d.handedBy):"")+", "+esc(d.doneAt)+"</div>";
  d.log.forEach(function(l){h+='<div class="log">'+esc(l)+"</div>"});
  if(!hist&&openId===d.id){h+='<div class="panel"><label>Who collected it?</label><select id="cb"><option>Sir</option><option>Madam</option><option>Other (instructed)</option></select><input id="co" placeholder="Name or note if Other"><div class="row"><button class="btn" data-a="hand" data-id="'+d.id+'">Handed out</button><button class="btn alt" data-a="close">Cancel</button></div></div>'}
@@ -85,13 +88,13 @@ function render(){
  [["wait","Waiting"],["add","Add"],["hist","Records"]].forEach(function(t){h+='<button data-a="tab" data-id="'+t[0]+'" class="'+(tab===t[0]?"on":"")+'">'+t[1]+"</button>"});
  h+="</nav></header>";
  if(!G.length)h+='<div class="empty">No guard names yet. Open Records and add the guard names first.</div>';
- if(tab==="add"){h+='<h2>New document</h2><label>Street</label><select id="st">'+opts(STREETS)+'</select><label>Villa number</label><input id="vi" inputmode="numeric"><label>Tenant name</label><input id="tn"><label>Document type</label><select id="ty"><option>Tenancy agreement</option><option>Rent receipt</option></select><label>Given by (management staff)</label><input id="gb"><button class="btn" data-a="add">Save as waiting</button>'}
+ if(tab==="add"){h+='<h2>New document</h2><label>Street</label><select id="st">'+opts(STREETS)+'</select><label>Villa number</label><input id="vi" inputmode="numeric"><label>Tenant name</label><input id="tn"><label>Document type</label><select id="ty"><option>Tenancy agreement</option><option>Rent receipt</option></select><label>How many</label><input id="qy" type="number" min="1" value="1" inputmode="numeric"><label>Months or note (optional)</label><input id="nt" placeholder="For example: Oct, Nov, Dec"><label>Given by (management staff)</label><input id="gb"><button class="btn" data-a="add">Save as waiting</button>'}
  else if(tab==="wait"){
   h+='<input id="q" placeholder="Search villa, street or name" value="'+esc(q)+'" style="margin-top:12px">';
   var any=false;
   STREETS.forEach(function(s){
    var L=D.filter(function(d){return d.status==="Pending"&&d.street===s&&q.toLowerCase().split(/\s+/).filter(Boolean).every(function(w){return(d.villa+" "+d.street+" "+d.tenant).toLowerCase().indexOf(w)>-1})});
-   if(!L.length)return;any=true;
+   if(!L.length)return;any=true;L.sort(function(x,y){return x.villa.localeCompare(y.villa,undefined,{numeric:true})});
    h+='<div class="sign">'+s+"<span>"+L.length+" waiting</span></div>";
    L.forEach(function(d){h+=card(d,false)})});
   if(!any)h+='<div class="empty">Nothing waiting. Tap Add when management brings documents.</div>'}
@@ -100,7 +103,7 @@ function render(){
   D.forEach(function(d){if(c[d.status]!==undefined)c[d.status]++});
   h+='<div class="sum"><div><b>'+c.Pending+'</b>Waiting</div><div><b>'+c.Delivered+'</b>Handed out</div><div><b>'+c["Collected at office"]+'</b>At office</div></div>';
   h+='<select id="fl">'+opts(["All","Pending","Delivered","Collected at office","Voided"],fl)+"</select>";
-  var L=D.filter(function(d){return fl==="All"||d.status===fl}).slice().reverse();
+  var L=D.filter(function(d){return fl==="All"||d.status===fl}).sort(function(x,y){return ts(y)-ts(x)});
   if(!L.length)h+='<div class="empty">No records yet.</div>';
   L.forEach(function(d){h+=card(d,true)});
   h+='<h2>Guard names</h2>'+G.map(function(g,i){return'<div class="row" style="align-items:center"><span style="flex:1">'+esc(g)+'</span><button class="btn sm alt" data-a="delg" data-id="'+i+'">Remove</button></div>'}).join("")+'<input id="gn" style="margin-top:12px" placeholder="Add a guard first name"><button class="btn alt" data-a="addg">Add name</button><div class="note">All records are saved in the shared Google Sheet.</div>'}
@@ -118,7 +121,7 @@ document.addEventListener("click",function(e){
  if(!me){toast("Pick your name at the top first.");return}
  if(a==="add"){
   var vi=v("vi"),tn=v("tn"),gb=v("gb");if(!vi||!tn||!gb){toast("Fill in villa, tenant and who gave it.");return}
-  if(busy)return;tab="wait";call("add",{street:v("st"),villa:vi,tenant:tn,type:v("ty"),givenBy:gb}).then(function(ok){if(!ok)tab="add";render();if(ok)toast("Saved. It is now waiting.")});return}
+  if(busy)return;tab="wait";call("add",{street:v("st"),villa:vi,tenant:tn,type:v("ty"),givenBy:gb,qty:Math.max(1,parseInt(v("qy"))||1),note:v("nt")}).then(function(ok){if(!ok)tab="add";render();if(ok)toast("Saved. It is now waiting.")});return}
  if(a==="hand"){var cb=v("cb"),co=v("co");if(cb.indexOf("Other")===0&&!co){toast("Write who collected it.");return}openId=null;act("hand",{id:id,collectedBy:cb.indexOf("Other")===0?co:cb},"Marked as handed out.");return}
  if(a==="office"){act("office",{id:id},"Marked as collected at office.");return}
  if(a==="undo"){act("undo",{id:id},"Back on the waiting list.");return}
