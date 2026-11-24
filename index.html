@@ -43,13 +43,18 @@ label{font-size:13px;color:var(--mu)}
 .log{font-size:12px;color:var(--bad);margin-top:4px}
 .empty{padding:28px 8px;text-align:center;color:var(--mu)}
 #toast{position:fixed;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));max-width:532px;margin:0 auto;background:var(--tx);color:var(--bg);padding:10px 12px;border-radius:8px;display:none;z-index:20;font-size:14px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.tile{text-align:left;background:var(--card);border:1px solid var(--ln);border-left:5px solid var(--sign);border-radius:8px;padding:9px 10px;color:var(--tx);font-size:14px}
+.tile b{display:block;font-size:22px;color:var(--sign)}
+.tile.zero{opacity:.45}
+.tile.zero b{color:var(--mu)}
 .note{font-size:12px;color:var(--mu);margin-top:18px}
 </style></head><body>
 <div class="wrap" id="app"></div><div id="toast"></div>
 <script>
 var API="https://script.google.com/macros/s/AKfycbyPTUY0_VJI_dpPvVMHNwJfswSRa7XvmLGO41JdbAzCPBRh4eDDFMjn8McEH_kWhN6o/exec";
 var STREETS=["Mecca","Damascus","Sunset","Beirut","Casablanca","Eastern","Western","Agadir"];
-var D=[],G=[],me="",pin="",tab="wait",q="",openId=null,fl="All",busy=false,loaded=false,failed=false,tt;
+var D=[],G=[],me="",pin="",tab="wait",q="",sel="",openId=null,fl="All",busy=false,loaded=false,failed=false,tt;
 try{me=localStorage.getItem("gl_me")||"";pin=localStorage.getItem("gl_pin")||""}catch(e){}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function toast(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";clearTimeout(tt);tt=setTimeout(function(){t.style.display="none"},2600)}
@@ -67,6 +72,7 @@ function act(action,extra,msg){if(busy)return;call(action,extra).then(function(o
 function find(id){return D.filter(function(d){return d.id===id})[0]}
 function pd(s){var m=/(\d\d)\/(\d\d)\/(\d{4}) (\d\d):(\d\d)/.exec(s||"");return m?new Date(+m[3],m[2]-1,+m[1],+m[4],+m[5]).getTime():0}
 function ts(d){var l=d.log.length?d.log[d.log.length-1]:"";return Math.max(pd(d.updatedAt),pd(d.doneAt),pd(d.receivedAt),pd(l))}
+function today(){var d=new Date(),p=function(n){return(n<10?"0":"")+n};return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()}
 function qx(d){var n=parseInt(d.qty)||1;return n>1?" × "+n:""}
 function card(d,hist){
  var c=d.status==="Pending"?"":d.status==="Voided"?" void":" done",h='<div class="card'+c+'"><div class="top"><span class="villa">'+esc(d.street)+" "+esc(d.villa)+'</span><span class="tag">'+(hist?esc(d.status):esc(d.type)+qx(d))+'</span></div>';
@@ -91,13 +97,23 @@ function render(){
  if(tab==="add"){h+='<h2>New document</h2><label>Street</label><select id="st">'+opts(STREETS)+'</select><label>Villa number</label><input id="vi" inputmode="numeric"><label>Tenant name</label><input id="tn"><label>Document type</label><select id="ty"><option>Tenancy agreement</option><option>Rent receipt</option></select><label>How many</label><input id="qy" type="number" min="1" value="1" inputmode="numeric"><label>Months or note (optional)</label><input id="nt" placeholder="For example: Oct, Nov, Dec"><label>Given by (management staff)</label><input id="gb"><button class="btn" data-a="add">Save as waiting</button>'}
  else if(tab==="wait"){
   h+='<input id="q" placeholder="Search villa, street or name" value="'+esc(q)+'" style="margin-top:12px">';
-  var any=false;
-  STREETS.forEach(function(s){
-   var L=D.filter(function(d){return d.status==="Pending"&&d.street===s&&q.toLowerCase().split(/\s+/).filter(Boolean).every(function(w){return(d.villa+" "+d.street+" "+d.tenant).toLowerCase().indexOf(w)>-1})});
-   if(!L.length)return;any=true;L.sort(function(x,y){return x.villa.localeCompare(y.villa,undefined,{numeric:true})});
-   h+='<div class="sign">'+s+"<span>"+L.length+" waiting</span></div>";
-   L.forEach(function(d){h+=card(d,false)})});
-  if(!any)h+='<div class="empty">Nothing waiting. Tap Add when management brings documents.</div>'}
+  var pend=D.filter(function(d){return d.status==="Pending"}),terms=q.toLowerCase().split(/\s+/).filter(Boolean);
+  var match=function(d){return terms.every(function(w){return(d.villa+" "+d.street+" "+d.tenant).toLowerCase().indexOf(w)>-1})};
+  if(!terms.length&&!sel){
+   var td=today(),dn=D.filter(function(d){return(d.status==="Delivered"||d.status==="Collected at office")&&d.doneAt.indexOf(td)===0}).length;
+   h+='<div class="sum" style="grid-template-columns:1fr 1fr"><div><b>'+pend.length+'</b>Waiting</div><div><b>'+dn+'</b>Handed out today</div></div><div class="tiles">';
+   STREETS.forEach(function(s){var n=pend.filter(function(d){return d.street===s}).length;h+='<button class="tile'+(n?"":" zero")+'" data-a="street" data-id="'+s+'">'+s+'<b>'+n+'</b>waiting</button>'});
+   h+='<button class="tile" data-a="street" data-id="All">All streets<b>'+pend.length+'</b>waiting</button></div>';
+   if(!pend.length)h+='<div class="empty">Nothing waiting. Tap Add when management brings documents.</div>'}
+  else{
+   var list=(!terms.length&&sel!=="All")?[sel]:STREETS,any=false;
+   if(!terms.length)h+='<div class="row"><button class="btn sm alt" data-a="back">‹ All streets</button></div>';
+   list.forEach(function(s){
+    var L=pend.filter(function(d){return d.street===s&&match(d)});
+    if(!L.length)return;any=true;L.sort(function(x,y){return x.villa.localeCompare(y.villa,undefined,{numeric:true})});
+    h+='<div class="sign">'+s+"<span>"+L.length+" waiting</span></div>";
+    L.forEach(function(d){h+=card(d,false)})});
+   if(!any)h+='<div class="empty">'+(terms.length?"No match.":"Nothing waiting here.")+'</div>'}}
  else{
   var c={Pending:0,Delivered:0,"Collected at office":0};
   D.forEach(function(d){if(c[d.status]!==undefined)c[d.status]++});
@@ -113,7 +129,9 @@ document.addEventListener("click",function(e){
  var b=e.target.closest("[data-a]");if(!b)return;var a=b.dataset.a,id=b.dataset.id;
  if(a==="unlock"){var p=v("pin");if(!p){toast("Type the PIN.");return}pin=p;call("list",{},true).then(function(ok){if(ok){try{localStorage.setItem("gl_pin",pin)}catch(x){}}render()});return}
  if(a==="retry"||a==="refresh"){load(true);return}
- if(a==="tab"){tab=id;openId=null;render();return}
+ if(a==="tab"){tab=id;if(id==="wait")sel="";openId=null;render();return}
+ if(a==="street"){sel=id;openId=null;render();return}
+ if(a==="back"){sel="";openId=null;render();return}
  if(a==="open"){openId=id;render();return}
  if(a==="close"){openId=null;render();return}
  if(a==="addg"){var n=v("gn");if(!n){toast("Type a name first.");return}act("addGuard",{name:n},"Name added.");return}
